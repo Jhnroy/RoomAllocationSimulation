@@ -1,0 +1,81 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+main {
+    padding: 20px;
+}
+
+#input-section {
+    margin-bottom: 30px;
+}
+
+form {
+    display: grid;
+    grid-gap: 10px;
+    margin-top: 20px;
+}
+
+label {
+    font-weight: bold;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+#allocation-results,
+#vacancy-results {
+    margin-top: 20px;
+}
+
+.room-allocation {
+    margin-top: 15px;
+    border-top: 1px solid #ccc;
+    padding-top: 10px;
+}
+
+.room-allocation h4 {
+    margin-bottom: 10px;
+}
+
+.room-allocation p {
+    margin: 5px 0;
+}
+
+#vacancy-results {
+    margin-top: 20px;
+}
+
+.vacancy-time-slot {
+    margin-top: 15px;
+}
+
+.vacancy-time-slot h4 {
+    margin-bottom: 5px;
+}
+
+.vacancy-time-slot p {
+    margin: 5px 0;
+}
