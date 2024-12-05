@@ -3,11 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimizing Schedules and Room Allocation</title>
+    <title>Optimizing Schedules and Room Allocation At CNSC Abaño Campus</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 0;
+        }
+        header{
+            background-color: #800008;
+            padding: 2rem;
+            color: white;
+        }
+        main{
+            margin: 2rem;
         }
 
         h1, h2 {
@@ -44,14 +53,15 @@
             margin: 20px auto;
             padding: 10px 20px;
             font-size: 16px;
-            background-color: #4CAF50;
+            background-color: #800008;
             color: white;
             border: none;
+            border-radius: 8px;
             cursor: pointer;
         }
 
         button:hover {
-            background-color: #45a049;
+            background-color: #265e28;
         }
 
         .schedule-output {
@@ -66,7 +76,7 @@
 
         #room-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 10px;
             margin-top: 30px;
         }
@@ -76,7 +86,11 @@
             padding: 10px;
             text-align: center;
             background-color: #f9f9f9;
-            height: 120px;
+            height: auto;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .room-cell.filled {
@@ -92,19 +106,31 @@
         .room-info {
             font-size: 14px;
             padding: 5px;
+            text-align: left;
+        }
+
+        .room-info ul {
+            padding-left: 15px;
+            text-align: left;
+        }
+
+        .room-info ul li {
+            list-style-type: disc;
+            margin-bottom: 5px;
         }
 
         .vacancy-info {
             margin-top: 20px;
             text-align: center;
+            font-weight: bold;
+            font-size: 18px;
         }
-
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Room Allocation Simulation</h1>
+        <h1>Room Allocation Simulation At CNSC Abaño Campus</h1>
     </header>
 
     <main>
@@ -187,27 +213,82 @@
                 });
             });
 
-            // Optimize allocation using a basic algorithm
+            // Calculate available times
+            function calculateAvailableTimes(allocatedTimes, allocatedDays) {
+                const allTimes = [
+                    { time: "8:00-9:00", days: ["MWF", "TTh"] },
+                    { time: "9:00-10:00", days: ["MWF", "TTh"] },
+                    { time: "10:00-11:00", days: ["MWF", "TTh"] },
+                    { time: "11:00-12:00", days: ["MWF", "TTh"] },
+                    { time: "12:00-1:00", days: ["MWF", "TTh"] },
+                    { time: "1:00-2:00", days: ["MWF", "TTh"] },
+                    { time: "2:00-3:00", days: ["MWF", "TTh"] },
+                    { time: "3:00-4:00", days: ["MWF", "TTh"] }
+                ];
+
+                return allTimes.filter(slot => 
+                    !allocatedTimes.includes(slot.time) && !allocatedDays.some(day => slot.days.includes(day))
+                );
+            }
+
+            // Optimize allocation
             optimizeBtn.addEventListener("click", () => {
                 if (!rooms || !instructorSchedule || instructorSchedule.length === 0) {
                     alert("Please generate and submit the instructor schedule first!");
                     return;
                 }
 
-                // Basic MILP Simulation
+                // Basic allocation
                 const roomAllocation = Array.from({ length: rooms }, () => []);
-                instructorSchedule.forEach(instructor => {
-                    // Basic room allocation (greedy allocation by instructor)
-                    const availableRoom = roomAllocation.find(room => room.length < 1); // Choose the first available room
+                const timeBlocks = Array.from({ length: rooms }, () => []);
+                const daysAllocated = Array.from({ length: rooms }, () => []);
+
+                instructorSchedule.sort((a, b) => {
+                    // Sort by start time of instructor
+                    return a.time.localeCompare(b.time);
+                });
+
+                let remainingInstructors = [...instructorSchedule]; // Track remaining instructors for room allocation
+
+                // First pass: Assign rooms to instructors
+                remainingInstructors.forEach(instructor => {
+                    const availableRoom = roomAllocation.find((room, index) => room.length === 0);
                     if (availableRoom) {
                         availableRoom.push(instructor);
+                        const roomIndex = roomAllocation.indexOf(availableRoom);
+                        timeBlocks[roomIndex].push(instructor.time);
+                        daysAllocated[roomIndex].push(instructor.days);
                     }
                 });
 
-                // Clear previous room grid
-                roomGrid.innerHTML = '';
+                // Second pass: If there are still unassigned instructors, start sharing rooms
+                remainingInstructors = remainingInstructors.filter(instructor => !roomAllocation.some(room => room.includes(instructor)));
+                
+                remainingInstructors.forEach(instructor => {
+                    // Try to find a room that has a vacant time slot for the instructor
+                    let assigned = false;
+                    for (let i = 0; i < rooms; i++) {
+                        if (!timeBlocks[i].includes(instructor.time) && !daysAllocated[i].includes(instructor.days)) {
+                            roomAllocation[i].push(instructor);
+                            timeBlocks[i].push(instructor.time);
+                            daysAllocated[i].push(instructor.days);
+                            assigned = true;
+                            break;
+                        }
+                    }
+                    // If an instructor cannot be assigned to an existing room, they should be placed in a new room
+                    if (!assigned) {
+                        const newRoomIndex = roomAllocation.findIndex(room => room.length === 0);
+                        if (newRoomIndex !== -1) {
+                            roomAllocation[newRoomIndex].push(instructor);
+                            timeBlocks[newRoomIndex].push(instructor.time);
+                            daysAllocated[newRoomIndex].push(instructor.days);
+                        }
+                    }
+                });
 
-                // Display room grid
+                // Display results
+                roomGrid.innerHTML = '';
                 roomAllocation.forEach((room, idx) => {
                     const roomCell = document.createElement('div');
                     roomCell.classList.add('room-cell');
@@ -220,11 +301,21 @@
                     } else {
                         roomCell.classList.add('empty');
                         roomCell.innerHTML = `<strong>Room ${idx + 1}</strong><br/>Vacant`;
+
+                        const availableTimes = calculateAvailableTimes(timeBlocks[idx], daysAllocated[idx]);
+                        const availableTimesHTML = availableTimes.map(slot => 
+                            `<li>${slot.time} (${slot.days.join(", ")})</li>`).join('');
+                        roomCell.innerHTML += `
+                            <div class="room-info">
+                                <strong>Available Times:</strong>
+                                <ul>${availableTimesHTML}</ul>
+                            </div>
+                        `;
                     }
                     roomGrid.appendChild(roomCell);
                 });
 
-                // Show number of vacant rooms
+                // Show vacancy info
                 const vacantRooms = roomAllocation.filter(room => room.length === 0).length;
                 vacancyInfo.innerHTML = `<strong>Vacant Rooms:</strong> ${vacantRooms}`;
             });

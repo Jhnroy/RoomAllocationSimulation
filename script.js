@@ -1,13 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("allocation-form");
     const generateBtn = document.getElementById("generate");
     const optimizeBtn = document.getElementById("optimize");
-    const instructorScheduleInputs = document.getElementById("instructor-schedule-inputs");
-    const allocationResultsDiv = document.getElementById("allocation-results");
-    const vacancyResultsDiv = document.getElementById("vacancy-results");
+    const scheduleTable = document.getElementById("schedule-table");
+    const resultsDiv = document.getElementById("results");
+    const roomGrid = document.getElementById("room-grid");
+    const vacancyInfo = document.getElementById("vacancy-info");
 
-    let rooms, instructors, instructorData = [];
+    let rooms, instructors, instructorSchedule = [];
 
-    // Generate input fields for instructor schedules
+    // Generate input fields for instructors' schedule
     generateBtn.addEventListener("click", () => {
         rooms = parseInt(document.getElementById("rooms").value);
         instructors = parseInt(document.getElementById("instructors").value);
@@ -17,73 +19,75 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        instructorScheduleInputs.innerHTML = `<h3>Instructor Schedule Details</h3>`;
+        scheduleTable.innerHTML = `<h3>Instructor Schedule</h3>`;
         for (let i = 0; i < instructors; i++) {
-            instructorScheduleInputs.innerHTML += `
-                <label>Instructor ${i + 1} Schedule (Enter hours as comma-separated values):</label>
-                <input type="text" id="instructor-${i}" required placeholder="e.g., 9, 10, 11 for 9AM-12PM">
+            scheduleTable.innerHTML += `
+                <label>Instructor ${i + 1} - Time:</label>
+                <input type="text" id="time-${i}" placeholder="e.g., 1:00-2:30">
+                <label>Instructor ${i + 1} - Days:</label>
+                <input type="text" id="days-${i}" placeholder="e.g., TTh">
             `;
         }
 
-        instructorScheduleInputs.innerHTML += `
-            <button type="button" id="submit-schedules">Submit Schedules</button>
+        scheduleTable.innerHTML += `
+            <button type="button" id="submit-schedule">Submit Schedule</button>
         `;
 
-        document.getElementById("submit-schedules").addEventListener("click", () => {
-            instructorData = [];
+        document.getElementById("submit-schedule").addEventListener("click", () => {
+            instructorSchedule = [];
             for (let i = 0; i < instructors; i++) {
-                const scheduleInput = document.getElementById(`instructor-${i}`).value;
-                const hours = scheduleInput.split(",").map(hour => parseInt(hour.trim()));
-
-                if (hours.some(hour => hour < 1 || hour > 24)) {
-                    alert(`Invalid hours for Instructor ${i + 1}`);
+                const time = document.getElementById(`time-${i}`).value;
+                const days = document.getElementById(`days-${i}`).value;
+                if (!time || !days) {
+                    alert(`Please fill out the schedule for Instructor ${i + 1}`);
                     return;
                 }
-
-                instructorData.push({ id: i + 1, schedule: hours });
+                instructorSchedule.push({ id: i + 1, time, days });
             }
-            alert("Schedules submitted successfully!");
+
+            alert("Instructor schedule submitted successfully!");
         });
     });
 
-    // Optimize room allocation using a basic algorithm
+    // Optimize allocation using a basic algorithm
     optimizeBtn.addEventListener("click", () => {
-        if (!rooms || !instructorData || instructorData.length === 0) {
-            alert("Please generate and submit instructor data first!");
+        if (!rooms || !instructorSchedule || instructorSchedule.length === 0) {
+            alert("Please generate and submit the instructor schedule first!");
             return;
         }
 
+        // Basic MILP Simulation
         const roomAllocation = Array.from({ length: rooms }, () => []);
-        const timeSlots = Array.from({ length: 24 }, () => []); // Tracks the time slots for each hour (1-24)
-
-        // Assign instructors to rooms
-        instructorData.forEach(instructor => {
-            instructor.schedule.forEach(hour => {
-                roomAllocation[hour % rooms].push(instructor);
-                timeSlots[hour - 1].push(instructor);
-            });
+        instructorSchedule.forEach(instructor => {
+            // Basic room allocation (greedy allocation by instructor)
+            const availableRoom = roomAllocation.find(room => room.length < 1); // Choose the first available room
+            if (availableRoom) {
+                availableRoom.push(instructor);
+            }
         });
 
-        // Display room allocation results
-        allocationResultsDiv.innerHTML = `<h3>Optimized Room Allocation</h3>`;
+        // Clear previous room grid
+        roomGrid.innerHTML = '';
+
+        // Display room grid
         roomAllocation.forEach((room, idx) => {
-            allocationResultsDiv.innerHTML += `<div class="room-allocation">
-                <h4>Room ${idx + 1}</h4>`;
-            room.forEach(instructor => {
-                allocationResultsDiv.innerHTML += `<p>Instructor ${instructor.id} - Scheduled at: ${instructor.schedule.join(", ")}</p>`;
-            });
-            allocationResultsDiv.innerHTML += `</div>`;
+            const roomCell = document.createElement('div');
+            roomCell.classList.add('room-cell');
+            if (room.length > 0) {
+                roomCell.classList.add('filled');
+                roomCell.innerHTML = `<strong>Room ${idx + 1}</strong><br/>`;
+                room.forEach(instructor => {
+                    roomCell.innerHTML += `<div class="room-info">Instructor ${instructor.id}: ${instructor.time}, ${instructor.days}</div>`;
+                });
+            } else {
+                roomCell.classList.add('empty');
+                roomCell.innerHTML = `<strong>Room ${idx + 1}</strong><br/>Vacant`;
+            }
+            roomGrid.appendChild(roomCell);
         });
 
-        // Display vacancy results for each time slot
-        vacancyResultsDiv.innerHTML = `<h3>Room Vacancy Overview</h3>`;
-        timeSlots.forEach((slot, idx) => {
-            vacancyResultsDiv.innerHTML += `<div class="vacancy-time-slot">
-                <h4>Time Slot: ${idx + 1}:00 - ${idx + 2}:00</h4>
-                <p>Rooms Occupied: ${rooms - slot.length}</p>
-                <p>Instructors With Classes: ${slot.length}</p>
-                <p>Vacant Rooms: ${slot.length ? rooms - slot.length : rooms}</p>
-            </div>`;
-        });
+        // Show number of vacant rooms
+        const vacantRooms = roomAllocation.filter(room => room.length === 0).length;
+        vacancyInfo.innerHTML = `<strong>Vacant Rooms:</strong> ${vacantRooms}`;
     });
 });
