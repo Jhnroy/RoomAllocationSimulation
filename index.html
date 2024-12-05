@@ -35,12 +35,17 @@
         th {
             background-color: #f2f2f2;
         }
-        input {
+        input, select {
             width: 100%;
             padding: 8px;
             margin: 5px 0;
             box-sizing: border-box;
             font-size: 16px;
+        }
+        label {
+            font-size: 16px;
+            margin-bottom: 5px;
+            display: block;
         }
         button {
             display: block;
@@ -63,6 +68,17 @@
         }
         #schedule-table {
             margin-top: 20px;
+        }
+        .schedule-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .schedule-row label {
+            width: 30%;
+        }
+        .schedule-row input, .schedule-row select {
+            width: 65%;
         }
         #room-grid {
             display: grid;
@@ -113,203 +129,177 @@
 </head>
 <body>
 
-    <header>
-        <h1>Room Allocation Simulation At CNSC Abaño Campus</h1>
-    </header>
+<header>
+    <h1>Room Allocation Simulation At CNSC Abaño Campus</h1>
+</header>
 
-    <main>
-        <section id="input-section">
-            <h2>Input Data</h2>
-            <form id="allocation-form">
-                <label for="rooms">Number of Rooms:</label>
-                <input type="number" id="rooms" name="rooms" min="1" required>
+<main>
+    <section id="input-section">
+        <h2>Input Data</h2>
+        <form id="allocation-form">
+            <label for="rooms">Number of Rooms:</label>
+            <input type="number" id="rooms" name="rooms" min="1" required>
 
-                <label for="instructors">Number of Instructors:</label>
-                <input type="number" id="instructors" name="instructors" min="1" required>
+            <label for="instructors">Number of Instructors:</label>
+            <input type="number" id="instructors" name="instructors" min="1" required>
 
-                <button type="button" id="generate">Generate Instructor Schedule</button>
-            </form>
+            <button type="button" id="generate">Generate Instructor Schedule</button>
+        </form>
 
-            <div id="schedule-table">
-                <!-- Input table for instructor schedule will appear here -->
-            </div>
-        </section>
+        <div id="schedule-table">
+            <!-- Instructor schedule input table will appear here -->
+        </div>
+    </section>
 
-        <section id="result-section">
-            <h2>Results</h2>
-            <button id="optimize">Optimize Allocation</button>
-            <div id="results"></div>
-            <div id="room-grid"></div>
-            <div class="vacancy-info" id="vacancy-info"></div>
-            <button id="exportExcel">Export to Excel</button>
-        </section>
-    </main>
+    <section id="result-section">
+        <h2>Results</h2>
+        <button id="optimize">Optimize Allocation</button>
+        <div id="results"></div>
+        <div id="room-grid"></div>
+        <div class="vacancy-info" id="vacancy-info"></div>
+        <button id="exportExcel">Export to Excel</button>
+    </section>
+</main>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const form = document.getElementById("allocation-form");
-            const generateBtn = document.getElementById("generate");
-            const optimizeBtn = document.getElementById("optimize");
-            const exportExcelBtn = document.getElementById("exportExcel");
-            const scheduleTable = document.getElementById("schedule-table");
-            const resultsDiv = document.getElementById("results");
-            const roomGrid = document.getElementById("room-grid");
-            const vacancyInfo = document.getElementById("vacancy-info");
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("allocation-form");
+        const generateBtn = document.getElementById("generate");
+        const optimizeBtn = document.getElementById("optimize");
+        const exportExcelBtn = document.getElementById("exportExcel");
+        const scheduleTable = document.getElementById("schedule-table");
+        const roomGrid = document.getElementById("room-grid");
+        const vacancyInfo = document.getElementById("vacancy-info");
 
-            let rooms, instructors, instructorSchedule = [];
+        let rooms, instructors, instructorSchedule = [];
 
-            // Generate input fields for instructors' schedule
-            generateBtn.addEventListener("click", () => {
-                rooms = parseInt(document.getElementById("rooms").value);
-                instructors = parseInt(document.getElementById("instructors").value);
+        // Generate input fields for instructors' schedule
+        generateBtn.addEventListener("click", () => {
+            rooms = parseInt(document.getElementById("rooms").value);
+            instructors = parseInt(document.getElementById("instructors").value);
 
-                if (!rooms || !instructors || rooms < 1 || instructors < 1) {
-                    alert("Please enter valid numbers for rooms and instructors.");
-                    return;
-                }
+            if (!rooms || !instructors || rooms < 1 || instructors < 1) {
+                alert("Please enter valid numbers for rooms and instructors.");
+                return;
+            }
 
-                scheduleTable.innerHTML = `<h3>Instructor Schedule</h3>`;
-                for (let i = 0; i < instructors; i++) {
-                    scheduleTable.innerHTML += `
+            scheduleTable.innerHTML = `<h3>Instructor Schedule</h3>`;
+            for (let i = 0; i < instructors; i++) {
+                scheduleTable.innerHTML += `
+                    <div class="schedule-row">
                         <label>Instructor ${i + 1} - Time:</label>
                         <input type="text" id="time-${i}" placeholder="e.g., 1:00-2:30">
+                    </div>
+                    <div class="schedule-row">
                         <label>Instructor ${i + 1} - Days:</label>
                         <input type="text" id="days-${i}" placeholder="e.g., TTh">
+                    </div>
+                    <div class="schedule-row">
+                        <label>Instructor ${i + 1} - Modality:</label>
+                        <select id="modality-${i}">
+                            <option value="Online">Online</option>
+                            <option value="Face-to-Face">Face-to-Face</option>
+                        </select>
+                    </div>
+                `;
+            }
+
+            scheduleTable.innerHTML += `
+                <button type="button" id="submit-schedule">Submit Schedule</button>
+            `;
+
+            document.getElementById("submit-schedule").addEventListener("click", () => {
+                instructorSchedule = [];
+                for (let i = 0; i < instructors; i++) {
+                    const time = document.getElementById(`time-${i}`).value;
+                    const days = document.getElementById(`days-${i}`).value;
+                    const modality = document.getElementById(`modality-${i}`).value;
+                    if (!time || !days || !modality) {
+                        alert(`Please fill out the schedule for Instructor ${i + 1}`);
+                        return;
+                    }
+                    instructorSchedule.push({ id: i + 1, time, days, modality });
+                }
+
+                alert("Instructor schedule submitted successfully!");
+            });
+        });
+
+        // Optimize allocation
+        optimizeBtn.addEventListener("click", () => {
+            if (!rooms || !instructorSchedule || instructorSchedule.length === 0) {
+                alert("Please generate and submit the instructor schedule first!");
+                return;
+            }
+
+            const roomAllocation = Array.from({ length: rooms }, () => []);
+
+            // Sort instructors by modality: prioritize "Face-to-Face" classes to allocate rooms first
+            instructorSchedule.sort((a, b) => a.modality === "Face-to-Face" ? -1 : 1);
+
+            instructorSchedule.forEach(instructor => {
+                const availableRoom = roomAllocation.find(room => room.length === 0 || room[0].modality === instructor.modality);
+                if (availableRoom) {
+                    availableRoom.push(instructor);
+                }
+            });
+
+            roomGrid.innerHTML = '';
+            roomAllocation.forEach((room, idx) => {
+                const roomCell = document.createElement('div');
+                roomCell.classList.add('room-cell');
+                if (room.length > 0) {
+                    roomCell.classList.add('filled');
+                    roomCell.innerHTML = `<strong>Room ${idx + 1}</strong><br/>`;
+                    room.forEach(instructor => {
+                        roomCell.innerHTML += `
+                            Instructor ${instructor.id}: ${instructor.time}, ${instructor.days}, Modality: ${instructor.modality}<br/>
+                        `;
+                    });
+                } else {
+                    roomCell.classList.add('empty');
+                    roomCell.innerHTML = `
+                        <strong>Room ${idx + 1}</strong><br/>
+                        Vacant: Available 8:00 AM - 12:00 PM, 1:00 PM - 5:00 PM
                     `;
                 }
-
-                scheduleTable.innerHTML += `
-                    <button type="button" id="submit-schedule">Submit Schedule</button>
-                `;
-
-                document.getElementById("submit-schedule").addEventListener("click", () => {
-                    instructorSchedule = [];
-                    for (let i = 0; i < instructors; i++) {
-                        const time = document.getElementById(`time-${i}`).value;
-                        const days = document.getElementById(`days-${i}`).value;
-                        if (!time || !days) {
-                            alert(`Please fill out the schedule for Instructor ${i + 1}`);
-                            return;
-                        }
-                        instructorSchedule.push({ id: i + 1, time, days });
-                    }
-
-                    alert("Instructor schedule submitted successfully!");
-                });
+                roomGrid.appendChild(roomCell);
             });
 
-            // Optimize allocation
-            optimizeBtn.addEventListener("click", () => {
-                if (!rooms || !instructorSchedule || instructorSchedule.length === 0) {
-                    alert("Please generate and submit the instructor schedule first!");
-                    return;
-                }
-
-                const roomAllocation = Array.from({ length: rooms }, () => []);
-                const timeBlocks = Array.from({ length: rooms }, () => []);
-                const daysAllocated = Array.from({ length: rooms }, () => []);
-
-                instructorSchedule.sort((a, b) => a.time.localeCompare(b.time));
-
-                let remainingInstructors = [...instructorSchedule];
-
-                remainingInstructors.forEach(instructor => {
-                    const availableRoom = roomAllocation.find(room => room.length === 0);
-                    if (availableRoom) {
-                        availableRoom.push(instructor);
-                    }
-                });
-
-                remainingInstructors = remainingInstructors.filter(instructor => 
-                    !roomAllocation.some(room => room.includes(instructor))
-                );
-
-                remainingInstructors.forEach(instructor => {
-                    let assigned = false;
-                    for (let i = 0; i < rooms; i++) {
-                        if (!timeBlocks[i].includes(instructor.time) && !daysAllocated[i].includes(instructor.days)) {
-                            roomAllocation[i].push(instructor);
-                            assigned = true;
-                            break;
-                        }
-                    }
-                    if (!assigned) {
-                        const newRoomIndex = roomAllocation.findIndex(room => room.length === 0);
-                        if (newRoomIndex !== -1) {
-                            roomAllocation[newRoomIndex].push(instructor);
-                        }
-                    }
-                });
-
-                // Save room allocation to localStorage
-                localStorage.setItem("roomAllocation", JSON.stringify(roomAllocation));
-
-                roomGrid.innerHTML = '';
-                roomAllocation.forEach((room, idx) => {
-                    const roomCell = document.createElement('div');
-                    roomCell.classList.add('room-cell');
-                    if (room.length > 0) {
-                        roomCell.classList.add('filled');
-                        roomCell.innerHTML = `<strong>Room ${idx + 1}</strong><br/>`;
-                        room.forEach(instructor => {
-                            roomCell.innerHTML += `<div class="room-info">Instructor ${instructor.id}: ${instructor.time}, ${instructor.days}</div>`;
-                        });
-                    } else {
-                        roomCell.classList.add('empty');
-                        roomCell.innerHTML = `<strong>Room ${idx + 1}</strong><br/>Vacant`;
-                    }
-                    roomGrid.appendChild(roomCell);
-                });
-
-                const vacantRooms = roomAllocation.filter(room => room.length === 0).length;
-                vacancyInfo.innerHTML = `<strong>Vacant Rooms:</strong> ${vacantRooms}`;
-            });
-
-            // Export to Excel
-            exportExcelBtn.addEventListener("click", () => {
-                const roomAllocation = JSON.parse(localStorage.getItem("roomAllocation"));
-                if (!roomAllocation) {
-                    alert("No room allocation data available.");
-                    return;
-                }
-
-                const ws = XLSX.utils.table_to_sheet(createExcelTable(roomAllocation));
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Room Allocation");
-                XLSX.writeFile(wb, "Room_Allocation.xlsx");
-            });
-
-            // Create table for Excel export
-            function createExcelTable(roomAllocation) {
-                const table = document.createElement("table");
-                table.innerHTML = `
-                    <thead>
-                        <tr>
-                            <th>Room</th>
-                            <th>Instructor</th>
-                            <th>Time</th>
-                            <th>Days</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                `;
-
-                roomAllocation.forEach((room, roomIdx) => {
-                    room.forEach(instructor => {
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td>${roomIdx + 1}</td>
-                            <td>Instructor ${instructor.id}</td>
-                            <td>${instructor.time}</td>
-                            <td>${instructor.days}</td>
-                        `;
-                        table.querySelector("tbody").appendChild(row);
-                    });
-                });
-                return table;
-            }
+            vacancyInfo.textContent = `${rooms - roomAllocation.filter(room => room.length > 0).length} room(s) are still vacant.`;
+            localStorage.setItem("roomAllocation", JSON.stringify(roomAllocation));
         });
-    </script>
+
+        // Export to Excel
+        exportExcelBtn.addEventListener("click", () => {
+            const roomAllocation = JSON.parse(localStorage.getItem("roomAllocation"));
+            if (!roomAllocation) {
+                alert("No room allocation data available.");
+                return;
+            }
+
+            const ws = XLSX.utils.table_to_sheet(createExcelTable(roomAllocation));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Room Allocation");
+            XLSX.writeFile(wb, "Room_Allocation.xlsx");
+        });
+
+        function createExcelTable(roomAllocation) {
+            const table = document.createElement("table");
+            table.innerHTML = `<tr><th>Room</th><th>Details</th></tr>`;
+            roomAllocation.forEach((room, idx) => {
+                const row = table.insertRow();
+                const cell1 = row.insertCell(0);
+                const cell2 = row.insertCell(1);
+                cell1.textContent = `Room ${idx + 1}`;
+                cell2.innerHTML = room.length > 0 ? 
+                    room.map(instr => `Instructor ${instr.id}: ${instr.time}, ${instr.days}, Modality: ${instr.modality}`).join("<br/>") :
+                    "Vacant: Available 8:00 AM - 12:00 PM, 1:00 PM - 5:00 PM";
+            });
+            return table;
+        }
+    });
+</script>
 
 </body>
 </html>
